@@ -1,5 +1,6 @@
 #include "main.h"
 #include "vkinit.h"
+#include "vkDraw.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,10 +18,13 @@ int main(void) {
         .MAX_FRAMES_IN_FLIGHT = 2,
         .currentFrame = 0,
         .framebufferResized = false,
-        .vertices = { verticeList, 3 }
+        .vertices = { verticeList, 3 },
+        .PARTICLE_COUNT = 1000
     };
     uint32_t WIN_WIDTH = 800;
     uint32_t WIN_HEIGHT = 600;
+
+    srand(0);
 
     initWindow(&context, WIN_WIDTH, WIN_HEIGHT);
     initVulkan(&context);
@@ -52,10 +56,12 @@ void initVulkan(Context* context) {
     createSwapChain(context);
     createImageViews(context);
     createRenderPass(context);
+    createComputeDescriptorSetLayout(context);
     createGraphicsPipeline(context);
     createFramebuffers(context);
     createCommandPool(context);
     createVertexBuffer(context);
+    createComputeDescriptorSets(context);
     createCommandBuffers(context);
     createSyncObjects(context);
 }
@@ -72,9 +78,12 @@ void cleanup(Context* context) {
     cleanupSwapChain(context);
     vkDestroyPipeline(context->device, context->graphicsPipeline, NULL);
     vkDestroyPipelineLayout(context->device, context->pipelineLayout, NULL);
+    vkDestroyPipeline(context->device, context->computePipeline, NULL);
+    vkDestroyPipelineLayout(context->device, context->computePipelineLayout, NULL);
     vkDestroyRenderPass(context->device, context->renderPass, NULL);
     vkDestroyBuffer(context->device, context->vertexBuffer, NULL);
     vkFreeMemory(context->device, context->vertexBufferMemory, NULL);
+    vkDestroyDescriptorSetLayout(context->device, context->computeDescriptorSetLayout, NULL);
     for (uint32_t i = 0; i < context->MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroySemaphore(context->device, context->imageAvailableSemaphores[i], NULL);
         vkDestroySemaphore(context->device, context->renderFinishedSemaphores[i], NULL);
@@ -94,6 +103,7 @@ void cleanup(Context* context) {
     free(context->imageAvailableSemaphores);
     free(context->renderFinishedSemaphores);
     free(context->inFlightFences);
+    free(context->computeDescriptorSets);
 }
 
 void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {

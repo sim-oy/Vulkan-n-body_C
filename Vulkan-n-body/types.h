@@ -30,6 +30,13 @@ typedef struct {
     const uint32_t size;
 } Vertices;
 
+typedef struct {
+    vec2 pos;
+    vec2 vel;
+    float mss;
+    vec3 col;
+} Particle;
+
 typedef struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
     uint32_t formatCount;
@@ -38,8 +45,12 @@ typedef struct SwapChainSupportDetails {
     VkPresentModeKHR* presentModes;
 } SwapChainSupportDetails;
 
+typedef struct UniformBufferObject {
+    const float deltaTime;
+} UniformBufferObject;
+
 typedef struct QueueFamilyIndices {
-    uint32_t graphicsFamily;
+    uint32_t graphicsFamily; // includes ComputeFamily
     bool HasGraphicsFamily;
     uint32_t presentFamily;
     bool HasPresentFamily;
@@ -78,6 +89,18 @@ typedef struct Context {
     const Vertices vertices;
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
+
+    const uint32_t PARTICLE_COUNT;
+    
+    VkQueue computeQueue;
+    VkDescriptorSetLayout computeDescriptorSetLayout;
+    VkPipelineLayout computePipelineLayout;
+    VkPipeline computePipeline;
+    VkDescriptorPool descriptorPool;
+    VkDescriptorSet* computeDescriptorSets;
+
+    VkBuffer* shaderStorageBuffers;
+    VkDeviceMemory* shaderStorageBuffersMemory;
 } Context;
 
 #endif

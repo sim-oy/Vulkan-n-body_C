@@ -252,7 +252,7 @@ QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surfa
 
 
     for (int i = 0; i < queueFamilyCount; i++) {
-        if (queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+        if ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) && (queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT)) {
             indices.graphicsFamily = i;
             indices.HasGraphicsFamily = true;
         }
@@ -301,6 +301,7 @@ void createLogicalDevice(Context* context) {
     checkErr(result, "failed to create logical device!");
 
     vkGetDeviceQueue(context->device, context->queueFamilyIndices.graphicsFamily, 0, &context->graphicsQueue);
+    vkGetDeviceQueue(context->device, context->queueFamilyIndices.graphicsFamily, 0, &context->computeQueue);
     vkGetDeviceQueue(context->device, context->queueFamilyIndices.presentFamily, 0, &context->presentQueue);
 }
 
@@ -520,6 +521,36 @@ void createRenderPass(Context* context) {
 
     VkResult result = vkCreateRenderPass(context->device, &renderPassInfo, NULL, &context->renderPass);
     checkErr(result, "failed to create render pass!");
+}
+
+void createComputeDescriptorSetLayout(Context* context) {
+    VkDescriptorSetLayoutBinding layoutBindings[3] = { 0 };
+    layoutBindings[0].binding = 0;
+    layoutBindings[0].descriptorCount = 1;
+    layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    layoutBindings[0].pImmutableSamplers = NULL;
+    layoutBindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+    layoutBindings[1].binding = 1;
+    layoutBindings[1].descriptorCount = 1;
+    layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    layoutBindings[1].pImmutableSamplers = NULL;
+    layoutBindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+    layoutBindings[2].binding = 2;
+    layoutBindings[2].descriptorCount = 1;
+    layoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    layoutBindings[2].pImmutableSamplers = NULL;
+    layoutBindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = 3,
+        .pBindings = layoutBindings
+    };
+    
+    VkResult result = vkCreateDescriptorSetLayout(context->device, &layoutInfo, NULL, &context->computeDescriptorSetLayout);
+    checkErr(result, "failed to create compute descriptor set layout!");
 }
 
 void createGraphicsPipeline(Context* context) {
@@ -919,6 +950,164 @@ void createSyncObjects(Context* context) {
         }
     }
 }
+
+
+void createShaderStorageBuffers(Context* context) {
+
+    // Initial particle positions on a circle
+    Particle* particles = (Particle*)malloc(context->PARTICLE_COUNT * sizeof(Particle));
+
+    for (int i = 0; i < context->PARTICLE_COUNT; i++) {
+        particles[i].pos.x = (float)rand() / (float)RAND_MAX;
+        particles[i].pos.y = (float)rand() / (float)RAND_MAX;
+        particles[i].vel.x = (float)rand() / (float)RAND_MAX;
+        particles[i].vel.y = (float)rand() / (float)RAND_MAX;
+        particles[i].mss = (float)rand() / (float)RAND_MAX;
+        particles[i].col.x = 1.0f;
+        particles[i].col.y = 1.0f;
+        particles[i].col.z = 1.0f;
+    }
+
+    VkDeviceSize bufferSize = sizeof(Particle) * context->PARTICLE_COUNT;
+
+    // Create a staging buffer used to upload data to the gpu
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    createBuffer(context->physicalDevice, 
+        context->device, 
+        bufferSize, 
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+        &stagingBuffer, 
+        &stagingBufferMemory);
+
+    void* data;
+    vkMapMemory(context->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, particles, (size_t)bufferSize);
+    vkUnmapMemory(context->device, stagingBufferMemory);
+
+    context->shaderStorageBuffers = (VkBuffer*)malloc(sizeof(VkBuffer) * context->MAX_FRAMES_IN_FLIGHT);
+    context->shaderStorageBuffersMemory = (VkDeviceMemory*)malloc(sizeof(VkDeviceMemory) * context->MAX_FRAMES_IN_FLIGHT);
+
+    // Copy initial particle data to all storage buffers
+    for (size_t i = 0; i < context->MAX_FRAMES_IN_FLIGHT; i++) {
+        createBuffer(context->physicalDevice,
+            context->device, 
+            bufferSize,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+            context->shaderStorageBuffers[i], 
+            context->shaderStorageBuffersMemory[i]);
+        copyBuffer(context, context->commandPool, stagingBuffer, context->shaderStorageBuffers[i], bufferSize);
+    }
+
+    vkDestroyBuffer(context->device, stagingBuffer, NULL);
+    vkFreeMemory(context->device, stagingBufferMemory, NULL);
+    free(particles);
+}
+
+void createComputePipeline(Context* context) {
+
+    char* compShaderCode = NULL;
+    uint32_t compShaderCodeSize = (uint32_t)readFile("shaders/comp.spv", &compShaderCode);
+
+    VkShaderModule compShaderModule = createShaderModule(context->device, compShaderCode, compShaderCodeSize);
+
+    VkPipelineShaderStageCreateInfo computeShaderStageInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+        .module = compShaderModule,
+        .pName = "main"
+    };
+    
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 1,
+        .pSetLayouts = &context->computeDescriptorSetLayout
+    };
+    
+    VkResult result = vkCreatePipelineLayout(context->device, &pipelineLayoutInfo, NULL, &context->computePipelineLayout);
+    checkErr(result, "failed to create compute pipeline layout!");
+
+    VkComputePipelineCreateInfo pipelineInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+        .layout = context->computePipelineLayout,
+        .stage = computeShaderStageInfo
+    };
+
+    result = vkCreateComputePipelines(context->device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, &context->computePipeline);
+    checkErr(result, "failed to create compute pipeline!");
+
+    vkDestroyShaderModule(context->device, compShaderModule, NULL);
+}
+
+void createComputeDescriptorSets(Context* context) {
+    VkDescriptorSetLayout* layouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * context->MAX_FRAMES_IN_FLIGHT);
+    for (int i = 0; i < context->MAX_FRAMES_IN_FLIGHT; i++) {
+        layouts[i] = context->computeDescriptorSetLayout;
+    }
+
+    VkDescriptorSetAllocateInfo allocInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool = context->descriptorPool, // do createDescriptorPools!!
+        .descriptorSetCount = context->MAX_FRAMES_IN_FLIGHT,
+        .pSetLayouts = layouts
+    };
+    
+    context->computeDescriptorSets = (VkDescriptorSet*)malloc(sizeof(VkDescriptorSet) * context->MAX_FRAMES_IN_FLIGHT);
+    VkResult result = vkAllocateDescriptorSets(context->device, &allocInfo, context->computeDescriptorSets);
+    checkErr(result, "failed to allocate descriptor sets!");
+
+    for (size_t i = 0; i < context->MAX_FRAMES_IN_FLIGHT; i++) {
+        VkDescriptorBufferInfo uniformBufferInfo = {
+            .buffer = uniformBuffers[i], // do createUniformBuffers!!
+            .offset = 0,
+            .range = sizeof(UniformBufferObject)
+        };
+
+        VkWriteDescriptorSet descriptorWrites[3] = { 0 };
+        descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[0].dstSet = context->computeDescriptorSets[i];
+        descriptorWrites[0].dstBinding = 0;
+        descriptorWrites[0].dstArrayElement = 0;
+        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[0].descriptorCount = 1;
+        descriptorWrites[0].pBufferInfo = &uniformBufferInfo;
+
+        VkDescriptorBufferInfo storageBufferInfoLastFrame = {
+            .buffer = context->shaderStorageBuffers[(i - 1) % context->MAX_FRAMES_IN_FLIGHT],
+            .offset = 0,
+            .range = sizeof(Particle) * context->PARTICLE_COUNT
+        };
+
+        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[1].dstSet = context->computeDescriptorSets[i];
+        descriptorWrites[1].dstBinding = 1;
+        descriptorWrites[1].dstArrayElement = 0;
+        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrites[1].descriptorCount = 1;
+        descriptorWrites[1].pBufferInfo = &storageBufferInfoLastFrame;
+
+        VkDescriptorBufferInfo storageBufferInfoCurrentFrame = {
+            .buffer = context->shaderStorageBuffers[i],
+            .offset = 0,
+            .range = sizeof(Particle) * context->PARTICLE_COUNT
+        };
+        
+        descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[2].dstSet = context->computeDescriptorSets[i];
+        descriptorWrites[2].dstBinding = 2;
+        descriptorWrites[2].dstArrayElement = 0;
+        descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrites[2].descriptorCount = 1;
+        descriptorWrites[2].pBufferInfo = &storageBufferInfoCurrentFrame;
+
+        vkUpdateDescriptorSets(context->device, 3, descriptorWrites, 0, NULL);
+    }
+}
+
+
+
 
 // MOVE !!!!!
 void checkErr(VkResult result, char* msg) {

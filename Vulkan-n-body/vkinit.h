@@ -40,6 +40,8 @@ void createImageViews(Context* context);
 
 void createRenderPass(Context* context);
 
+void createComputeDescriptorSetLayout(Context* context);
+
 void createGraphicsPipeline(Context* context);
 uint32_t readFile(const char* filename, char** buffer);
 VkShaderModule createShaderModule(VkDevice device, uint8_t* code, uint32_t codeSize);
