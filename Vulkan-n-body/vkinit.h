@@ -52,7 +52,6 @@ void createFramebuffers(Context* context);
 
 void createCommandPool(Context* context);
 
-void createVertexBuffer(Context* context);
 void createBuffer(VkPhysicalDevice physicalDevice, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer* buffer, VkDeviceMemory* bufferMemory);
 uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
 void copyBuffer(Context* context, VkCommandPool commandPool, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
@@ -61,6 +60,13 @@ void createCommandBuffers(Context* context);
 
 void createSyncObjects(Context* context);
 
+void createShaderStorageBuffers(Context* context);
+void createComputePipeline(Context* context);
+void createComputeDescriptorSets(Context* context);
+void createDescriptorPool(Context* context);
+void createUniformBuffers(Context* context);
+
+void createComputeCommandBuffers(Context* context);
 
 void checkErr(VkResult result, char* msg);
 

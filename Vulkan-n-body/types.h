@@ -22,16 +22,6 @@ typedef struct {
 
 typedef struct {
     vec2 pos;
-    vec3 color;
-} Vertex;
-
-typedef struct {
-    Vertex* verts;
-    const uint32_t size;
-} Vertices;
-
-typedef struct {
-    vec2 pos;
     vec2 vel;
     float mss;
     vec3 col;
@@ -86,10 +76,6 @@ typedef struct Context {
     uint32_t currentFrame;
     bool framebufferResized;
 
-    const Vertices vertices;
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexBufferMemory;
-
     const uint32_t PARTICLE_COUNT;
     
     VkQueue computeQueue;
@@ -101,6 +87,15 @@ typedef struct Context {
 
     VkBuffer* shaderStorageBuffers;
     VkDeviceMemory* shaderStorageBuffersMemory;
+
+    VkBuffer* uniformBuffers;
+    VkDeviceMemory* uniformBuffersMemory;
+    void** uniformBuffersMapped;
+
+    VkCommandBuffer* computeCommandBuffers;
+
+    VkSemaphore* computeFinishedSemaphores;
+    VkFence* computeInFlightFences;
 } Context;
 
 #endif

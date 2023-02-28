@@ -566,15 +566,13 @@ void createGraphicsPipeline(Context* context) {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = VK_SHADER_STAGE_VERTEX_BIT,
         .module = vertShaderModule,
-        .pName = "main",
-        .pSpecializationInfo = NULL
+        .pName = "main"
     };
     VkPipelineShaderStageCreateInfo fragShaderStageInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
         .module = fragShaderModule,
-        .pName = "main",
-        .pSpecializationInfo = NULL
+        .pName = "main"
     };
     VkPipelineShaderStageCreateInfo shaderStages[2] = { vertShaderStageInfo, fragShaderStageInfo };
 
@@ -590,41 +588,16 @@ void createGraphicsPipeline(Context* context) {
         .pVertexAttributeDescriptions = attributeDescriptions
     };
 
-    uint32_t dynamicStateSize = 2;
-    VkDynamicState dynamicStates[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
-    VkPipelineDynamicStateCreateInfo dynamicState = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-        .dynamicStateCount = dynamicStateSize,
-        .pDynamicStates = dynamicStates
-    };
-
     VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        .topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
         .primitiveRestartEnable = VK_FALSE
-    };
-
-    VkViewport viewport = {
-        .x = 0.0f,
-        .y = 0.0f,
-        .width = (float)context->swapChainExtent.width,
-        .height = (float)context->swapChainExtent.height,
-        .minDepth = 0.0f,
-        .maxDepth = 1.0f
-    };
-
-    VkRect2D scissor = {
-        .offset = { 0, 0 },
-        .extent = context->swapChainExtent
     };
 
     VkPipelineViewportStateCreateInfo viewportState = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
         .viewportCount = 1,
-        .pViewports = &viewport,
         .scissorCount = 1,
-        .pScissors = &scissor
-
     };
 
     VkPipelineRasterizationStateCreateInfo rasterizer = {
@@ -634,21 +607,14 @@ void createGraphicsPipeline(Context* context) {
         .polygonMode = VK_POLYGON_MODE_FILL,
         .lineWidth = 1.0f,
         .cullMode = VK_CULL_MODE_BACK_BIT,
-        .frontFace = VK_FRONT_FACE_CLOCKWISE,
-        .depthBiasEnable = VK_FALSE,
-        .depthBiasConstantFactor = 0.0f, // Optional
-        .depthBiasClamp = 0.0f, // Optional
-        .depthBiasSlopeFactor = 0.0f // Optional
+        .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+        .depthBiasEnable = VK_FALSE
     };
 
     VkPipelineMultisampleStateCreateInfo multisampling = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .sampleShadingEnable = VK_FALSE,
-        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
-        .minSampleShading = 1.0f, // Optional
-        .pSampleMask = NULL, // Optional
-        .alphaToCoverageEnable = VK_FALSE, // Optional
-        .alphaToOneEnable = VK_FALSE // Optional
+        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
     };
 
     VkPipelineColorBlendAttachmentState colorBlendAttachment = {
@@ -674,12 +640,18 @@ void createGraphicsPipeline(Context* context) {
         .blendConstants[3] = 0.0f // Optional
     };
 
+    uint32_t dynamicStateSize = 2;
+    VkDynamicState dynamicStates[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo dynamicState = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = dynamicStateSize,
+        .pDynamicStates = dynamicStates
+    };
+
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount = 0, // Optional
         .pSetLayouts = NULL, // Optional
-        .pushConstantRangeCount = 0, // Optional
-        .pPushConstantRanges = NULL // Optional
     };
 
     VkResult result = vkCreatePipelineLayout(context->device, &pipelineLayoutInfo, NULL, &context->pipelineLayout);
@@ -694,14 +666,12 @@ void createGraphicsPipeline(Context* context) {
         .pViewportState = &viewportState,
         .pRasterizationState = &rasterizer,
         .pMultisampleState = &multisampling,
-        .pDepthStencilState = NULL, // Optional
         .pColorBlendState = &colorBlending,
         .pDynamicState = &dynamicState,
         .layout = context->pipelineLayout,
         .renderPass = context->renderPass,
         .subpass = 0,
         .basePipelineHandle = VK_NULL_HANDLE, // Optional
-        .basePipelineIndex = -1, // Optional
     };
 
     result = vkCreateGraphicsPipelines(context->device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, &context->graphicsPipeline);
@@ -755,7 +725,7 @@ VkShaderModule createShaderModule(VkDevice device, uint8_t* code, uint32_t codeS
 void getBindingDescriptions(VkVertexInputBindingDescription* bindingDescriptions) {
     bindingDescriptions[0] = (VkVertexInputBindingDescription){ 0 };
     bindingDescriptions[0].binding = 0;
-    bindingDescriptions[0].stride = sizeof(Vertex);
+    bindingDescriptions[0].stride = sizeof(Particle);
     bindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 }
 
@@ -764,13 +734,13 @@ void getAttributeDescriptions(VkVertexInputAttributeDescription* attributeDescri
     attributeDescriptions[0].binding = 0;
     attributeDescriptions[0].location = 0;
     attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-    attributeDescriptions[0].offset = offsetof(Vertex, pos);
+    attributeDescriptions[0].offset = offsetof(Particle, pos);
 
     attributeDescriptions[1] = (VkVertexInputAttributeDescription){ 0 };
     attributeDescriptions[1].binding = 0;
     attributeDescriptions[1].location = 1;
     attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[1].offset = offsetof(Vertex, color);
+    attributeDescriptions[1].offset = offsetof(Particle, col);
 }
 
 void createFramebuffers(Context* context) {
@@ -803,37 +773,6 @@ void createCommandPool(Context* context) {
     };
     VkResult result = vkCreateCommandPool(context->device, &poolInfo, NULL, &context->commandPool);
     checkErr(result, "failed to create command pool!");
-}
-
-void createVertexBuffer(Context* context) {
-
-    VkDeviceSize bufferSize = sizeof(context->vertices.verts[0]) * context->vertices.size;
-
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    createBuffer(context->physicalDevice,
-        context->device, bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        &stagingBuffer,
-        &stagingBufferMemory);
-
-    void* data;
-    vkMapMemory(context->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, context->vertices.verts, (size_t)bufferSize);
-    vkUnmapMemory(context->device, stagingBufferMemory);
-
-    createBuffer(context->physicalDevice,
-        context->device, bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        &context->vertexBuffer,
-        &context->vertexBufferMemory);
-
-    copyBuffer(context, context->commandPool, stagingBuffer, context->vertexBuffer, bufferSize);
-
-    vkDestroyBuffer(context->device, stagingBuffer, NULL);
-    vkFreeMemory(context->device, stagingBufferMemory, NULL);
 }
 
 void createBuffer(VkPhysicalDevice physicalDevice, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer* buffer, VkDeviceMemory* bufferMemory) {
@@ -893,12 +832,10 @@ void copyBuffer(Context* context, VkCommandPool commandPool, VkBuffer srcBuffer,
     };
     vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
-    VkBufferCopy copyRegion = {
-        .srcOffset = 0, // Optional
-        .dstOffset = 0, // Optional
-        .size = size
-    };
-    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+        VkBufferCopy copyRegion = {
+            .size = size
+        };
+        vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
     vkEndCommandBuffer(commandBuffer);
 
@@ -930,7 +867,9 @@ void createCommandBuffers(Context* context) {
 void createSyncObjects(Context* context) {
     context->imageAvailableSemaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * context->MAX_FRAMES_IN_FLIGHT);
     context->renderFinishedSemaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * context->MAX_FRAMES_IN_FLIGHT);
+    context->computeFinishedSemaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * context->MAX_FRAMES_IN_FLIGHT);
     context->inFlightFences = (VkFence*)malloc(sizeof(VkFence) * context->MAX_FRAMES_IN_FLIGHT);
+    context->computeInFlightFences = (VkFence*)malloc(sizeof(VkFence) * context->MAX_FRAMES_IN_FLIGHT);
 
     VkSemaphoreCreateInfo semaphoreInfo = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
@@ -945,7 +884,12 @@ void createSyncObjects(Context* context) {
         if (vkCreateSemaphore(context->device, &semaphoreInfo, NULL, &context->imageAvailableSemaphores[i]) != VK_SUCCESS ||
             vkCreateSemaphore(context->device, &semaphoreInfo, NULL, &context->renderFinishedSemaphores[i]) != VK_SUCCESS ||
             vkCreateFence(context->device, &fenceInfo, NULL, &context->inFlightFences[i]) != VK_SUCCESS) {
-            printf("failed to create semaphores or fence!\n");
+            printf("failed to create graphics semaphores or fence!\n");
+            exit(1);
+        }
+        if (vkCreateSemaphore(context->device, &semaphoreInfo, NULL, &context->computeFinishedSemaphores[i]) != VK_SUCCESS ||
+            vkCreateFence(context->device, &fenceInfo, NULL, &context->computeInFlightFences[i]) != VK_SUCCESS) {
+            printf("failed to create compute semaphores or fence!");
             exit(1);
         }
     }
@@ -964,7 +908,7 @@ void createShaderStorageBuffers(Context* context) {
         particles[i].vel.y = (float)rand() / (float)RAND_MAX;
         particles[i].mss = (float)rand() / (float)RAND_MAX;
         particles[i].col.x = 1.0f;
-        particles[i].col.y = 1.0f;
+        particles[i].col.y = 0.0f;
         particles[i].col.z = 1.0f;
     }
 
@@ -990,13 +934,13 @@ void createShaderStorageBuffers(Context* context) {
     context->shaderStorageBuffersMemory = (VkDeviceMemory*)malloc(sizeof(VkDeviceMemory) * context->MAX_FRAMES_IN_FLIGHT);
 
     // Copy initial particle data to all storage buffers
-    for (size_t i = 0; i < context->MAX_FRAMES_IN_FLIGHT; i++) {
+    for (uint32_t i = 0; i < context->MAX_FRAMES_IN_FLIGHT; i++) {
         createBuffer(context->physicalDevice,
             context->device, 
             bufferSize,
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-            context->shaderStorageBuffers[i], 
-            context->shaderStorageBuffersMemory[i]);
+            &context->shaderStorageBuffers[i], 
+            &context->shaderStorageBuffersMemory[i]);
         copyBuffer(context, context->commandPool, stagingBuffer, context->shaderStorageBuffers[i], bufferSize);
     }
 
@@ -1049,7 +993,7 @@ void createComputeDescriptorSets(Context* context) {
 
     VkDescriptorSetAllocateInfo allocInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .descriptorPool = context->descriptorPool, // do createDescriptorPools!!
+        .descriptorPool = context->descriptorPool,
         .descriptorSetCount = context->MAX_FRAMES_IN_FLIGHT,
         .pSetLayouts = layouts
     };
@@ -1060,7 +1004,7 @@ void createComputeDescriptorSets(Context* context) {
 
     for (size_t i = 0; i < context->MAX_FRAMES_IN_FLIGHT; i++) {
         VkDescriptorBufferInfo uniformBufferInfo = {
-            .buffer = uniformBuffers[i], // do createUniformBuffers!!
+            .buffer = context->uniformBuffers[i],
             .offset = 0,
             .range = sizeof(UniformBufferObject)
         };
@@ -1106,7 +1050,57 @@ void createComputeDescriptorSets(Context* context) {
     }
 }
 
+void createDescriptorPool(Context* context) {
+    VkDescriptorPoolSize poolSizes[2] = { 0 };
+    poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSizes[0].descriptorCount = context->MAX_FRAMES_IN_FLIGHT;
 
+    poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    poolSizes[1].descriptorCount = context->MAX_FRAMES_IN_FLIGHT * 2;
+
+    VkDescriptorPoolCreateInfo poolInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .poolSizeCount = 2,
+        .pPoolSizes = poolSizes,
+        .maxSets = context->MAX_FRAMES_IN_FLIGHT,
+    };
+    
+    VkResult result = vkCreateDescriptorPool(context->device, &poolInfo, NULL, &context->descriptorPool);
+    checkErr(result, "failed to create descriptor pool!");
+}
+
+void createUniformBuffers(Context* context) {
+    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+    context->uniformBuffers = (VkBuffer*)malloc(sizeof(VkBuffer) * context->MAX_FRAMES_IN_FLIGHT);
+    context->uniformBuffersMemory = (VkDeviceMemory*)malloc(sizeof(VkDeviceMemory) * context->MAX_FRAMES_IN_FLIGHT);
+    context->uniformBuffersMapped = (void**)malloc(sizeof(void*) * context->MAX_FRAMES_IN_FLIGHT);
+
+    for (size_t i = 0; i < context->MAX_FRAMES_IN_FLIGHT; i++) {
+        createBuffer(context->physicalDevice, 
+            context->device, bufferSize, 
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+            &context->uniformBuffers[i], 
+            &context->uniformBuffersMemory[i]);
+
+        vkMapMemory(context->device, context->uniformBuffersMemory[i], 0, bufferSize, 0, &context->uniformBuffersMapped[i]);
+    }
+}
+
+void createComputeCommandBuffers(Context* context) {
+    context->computeCommandBuffers = (VkCommandBuffer*)malloc(sizeof(VkCommandBuffer) * context->MAX_FRAMES_IN_FLIGHT);
+
+    VkCommandBufferAllocateInfo allocInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = context->commandPool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = context->MAX_FRAMES_IN_FLIGHT
+    };
+    
+    VkResult result = vkAllocateCommandBuffers(context->device, &allocInfo, context->computeCommandBuffers);
+    checkErr(result, "failed to allocate compute command buffers!");
+}
 
 
 // MOVE !!!!!

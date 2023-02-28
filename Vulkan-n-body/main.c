@@ -7,19 +7,12 @@
 #include <string.h>
 
 int main(void) {
-    const Vertex verticeList[] = {
-        { {0.0f, -0.5f}, {1.0f, 1.0f, 1.0f} },
-        { {0.5f, 0.5f}, {0.0f, 1.0f, 0.0f} },
-        { {-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f} }
-    };
-
     Context context = {
         .WIN_NAME = "Window 1",
         .MAX_FRAMES_IN_FLIGHT = 2,
         .currentFrame = 0,
         .framebufferResized = false,
-        .vertices = { verticeList, 3 },
-        .PARTICLE_COUNT = 1000
+        .PARTICLE_COUNT = 256
     };
     uint32_t WIN_WIDTH = 800;
     uint32_t WIN_HEIGHT = 600;
@@ -58,11 +51,15 @@ void initVulkan(Context* context) {
     createRenderPass(context);
     createComputeDescriptorSetLayout(context);
     createGraphicsPipeline(context);
+    createComputePipeline(context);
     createFramebuffers(context);
     createCommandPool(context);
-    createVertexBuffer(context);
+    createShaderStorageBuffers(context);
+    createUniformBuffers(context);
+    createDescriptorPool(context);
     createComputeDescriptorSets(context);
     createCommandBuffers(context);
+    createComputeCommandBuffers(context);
     createSyncObjects(context);
 }
 
@@ -76,33 +73,58 @@ void mainLoop(Context* context) {
 
 void cleanup(Context* context) {
     cleanupSwapChain(context);
+
     vkDestroyPipeline(context->device, context->graphicsPipeline, NULL);
     vkDestroyPipelineLayout(context->device, context->pipelineLayout, NULL);
+
     vkDestroyPipeline(context->device, context->computePipeline, NULL);
     vkDestroyPipelineLayout(context->device, context->computePipelineLayout, NULL);
+
     vkDestroyRenderPass(context->device, context->renderPass, NULL);
-    vkDestroyBuffer(context->device, context->vertexBuffer, NULL);
-    vkFreeMemory(context->device, context->vertexBufferMemory, NULL);
+
+    for (size_t i = 0; i < context->MAX_FRAMES_IN_FLIGHT; i++) {
+        vkDestroyBuffer(context->device, context->uniformBuffers[i], NULL);
+        vkFreeMemory(context->device, context->uniformBuffersMemory[i], NULL);
+    }
+
+    vkDestroyDescriptorPool(context->device, context->descriptorPool, NULL);
+
     vkDestroyDescriptorSetLayout(context->device, context->computeDescriptorSetLayout, NULL);
+
+    for (size_t i = 0; i < context->MAX_FRAMES_IN_FLIGHT; i++) {
+        vkDestroyBuffer(context->device, context->shaderStorageBuffers[i], NULL);
+        vkFreeMemory(context->device, context->shaderStorageBuffersMemory[i], NULL);
+    }
+
     for (uint32_t i = 0; i < context->MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroySemaphore(context->device, context->imageAvailableSemaphores[i], NULL);
         vkDestroySemaphore(context->device, context->renderFinishedSemaphores[i], NULL);
+        vkDestroySemaphore(context->device, context->computeFinishedSemaphores[i], NULL);
         vkDestroyFence(context->device, context->inFlightFences[i], NULL);
+        vkDestroyFence(context->device, context->computeInFlightFences[i], NULL);
     }
+
     vkDestroyCommandPool(context->device, context->commandPool, NULL);
+
     vkDestroyDevice(context->device, NULL);
+
     if (ENABLEVALIDATIONLAYERS) {
         DestroyDebugUtilsMessengerEXT(context->instance, context->debugMessenger, NULL);
     }
+
     vkDestroySurfaceKHR(context->instance, context->surface, NULL);
     vkDestroyInstance(context->instance, NULL);
+
     glfwDestroyWindow(context->window);
     glfwTerminate();
+
     free(context->swapChainImages);
     free(context->commandBuffers);
     free(context->imageAvailableSemaphores);
     free(context->renderFinishedSemaphores);
+    free(context->computeFinishedSemaphores);
     free(context->inFlightFences);
+    free(context->computeInFlightFences);
     free(context->computeDescriptorSets);
 }
 
