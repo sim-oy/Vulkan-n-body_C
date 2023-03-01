@@ -63,7 +63,7 @@ void drawFrame(Context* context) {
     // Compute submission
     vkWaitForFences(context->device, 1, &context->computeInFlightFences[context->currentFrame], VK_TRUE, UINT64_MAX);
 
-    updateUniformBuffer(context->uniformBuffersMapped, context->currentFrame);
+    updateUniformBuffer(context->timeStep, context->uniformBuffersMapped, context->currentFrame);
 
     vkResetFences(context->device, 1, &context->computeInFlightFences[context->currentFrame]);
 
@@ -136,9 +136,9 @@ void drawFrame(Context* context) {
     context->currentFrame = (context->currentFrame + 1) % context->MAX_FRAMES_IN_FLIGHT;
 }
 
-void updateUniformBuffer(void** uniformBuffersMapped, uint32_t currentImage) {
+void updateUniformBuffer(float timeStep, void** uniformBuffersMapped, uint32_t currentImage) {
     UniformBufferObject ubo = {
-        .deltaTime = 0.00005f
+        .deltaTime = timeStep
     };
 
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));

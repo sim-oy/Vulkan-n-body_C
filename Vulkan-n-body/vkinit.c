@@ -556,8 +556,8 @@ void createComputeDescriptorSetLayout(Context* context) {
 void createGraphicsPipeline(Context* context) {
     char* vertShaderCode = NULL;
     char* fragShaderCode = NULL;
-    uint32_t vertShaderCodeSize = (uint32_t)readFile("shaders/vert.spv", &vertShaderCode);
-    uint32_t fragShaderCodeSize = (uint32_t)readFile("shaders/frag.spv", &fragShaderCode);
+    uint32_t vertShaderCodeSize = (uint32_t)readFile("shaders/compiled/vert.spv", &vertShaderCode);
+    uint32_t fragShaderCodeSize = (uint32_t)readFile("shaders/compiled/frag.spv", &fragShaderCode);
 
     VkShaderModule vertShaderModule = createShaderModule(context->device, vertShaderCode, vertShaderCodeSize);
     VkShaderModule fragShaderModule = createShaderModule(context->device, fragShaderCode, fragShaderCodeSize);
@@ -901,12 +901,14 @@ void createShaderStorageBuffers(Context* context) {
     // Initial particle positions on a circle
     Particle* particles = (Particle*)malloc(context->PARTICLE_COUNT * sizeof(Particle));
 
+    #define frand ((float)rand() / (float)RAND_MAX)
+    #define rands(x) (rand() > RAND_MAX / 2 ? -x : x)
     for (int i = 0; i < context->PARTICLE_COUNT; i++) {
-        particles[i].pos.x = (float)rand() / (float)RAND_MAX;
-        particles[i].pos.y = (float)rand() / (float)RAND_MAX;
-        particles[i].vel.x = (float)rand() / (float)RAND_MAX;
-        particles[i].vel.y = (float)rand() / (float)RAND_MAX;
-        particles[i].mss = (float)rand() / (float)RAND_MAX;
+        particles[i].pos.x = rands(frand);
+        particles[i].pos.y = rands(frand);
+        particles[i].vel.x = rands(frand);
+        particles[i].vel.y = rands(frand);
+        particles[i].mss = rands(frand);
         particles[i].col.x = 1.0f;
         particles[i].col.y = 0.0f;
         particles[i].col.z = 1.0f;
@@ -952,7 +954,7 @@ void createShaderStorageBuffers(Context* context) {
 void createComputePipeline(Context* context) {
 
     char* compShaderCode = NULL;
-    uint32_t compShaderCodeSize = (uint32_t)readFile("shaders/comp.spv", &compShaderCode);
+    uint32_t compShaderCodeSize = (uint32_t)readFile("shaders/compiled/comp.spv", &compShaderCode);
 
     VkShaderModule compShaderModule = createShaderModule(context->device, compShaderCode, compShaderCodeSize);
 

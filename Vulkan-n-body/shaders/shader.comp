@@ -7,6 +7,8 @@ struct Particle {
     vec3 col;
 };
 
+float softening = 0.0001;
+
 layout (binding = 0) uniform ParameterUBO {
     float deltaTime;
 } ubo;
@@ -23,19 +25,22 @@ layout (local_size_x = 256, local_size_y = 1, local_size_z = 1) in;
 
 void main() 
 {
-    uint index = gl_GlobalInvocationID.x;  
+    uint i = gl_GlobalInvocationID.x;
+    uint globalWorkGroupSize = gl_WorkGroupSize.x * gl_NumWorkGroups.x;
+    float sumX = 0;
+	float sumY = 0;
+    for (int j = 0; j < globalWorkGroupSize; j++) {
+        vec2 distanceXY = particlesIn[j].pos.xy - particlesIn[i].pos.xy;
 
-    Particle particleIn = particlesIn[index];
+		float x2_y2 = distanceXY.x * distanceXY.x + distanceXY.y * distanceXY.y;
 
-    particlesOut[index].pos = particleIn.pos + particleIn.vel.xy * ubo.deltaTime;
-    particlesOut[index].vel = particleIn.vel;
+		float dist = inversesqrt(x2_y2 * x2_y2 * x2_y2 + softening);
+		float b = particlesIn[j].mss * dist;
 
-    // Flip movement at window border
-    if ((particlesOut[index].pos.x <= -1.0) || (particlesOut[index].pos.x >= 1.0)) {
-        particlesOut[index].vel.x = -particlesOut[index].vel.x;
+		sumX += distanceXY.x * b;
+		sumY += distanceXY.y * b;
     }
-    if ((particlesOut[index].pos.y <= -1.0) || (particlesOut[index].pos.y >= 1.0)) {
-        particlesOut[index].vel.y = -particlesOut[index].vel.y;
-    }
-
+    particlesOut[i].vel.x += sumX * ubo.deltaTime;
+	particlesOut[i].vel.y += sumY * ubo.deltaTime;
+    particlesOut[i].pos += particlesOut[i].vel;
 }

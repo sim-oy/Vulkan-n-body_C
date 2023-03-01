@@ -5,6 +5,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
+#define FRAMES_PER_PRINT 3000
 
 int main(void) {
     Context context = {
@@ -12,7 +15,8 @@ int main(void) {
         .MAX_FRAMES_IN_FLIGHT = 2,
         .currentFrame = 0,
         .framebufferResized = false,
-        .PARTICLE_COUNT = 256
+        .PARTICLE_COUNT = 256 * 1,
+        .timeStep = 0.001f
     };
     uint32_t WIN_WIDTH = 800;
     uint32_t WIN_HEIGHT = 600;
@@ -64,9 +68,27 @@ void initVulkan(Context* context) {
 }
 
 void mainLoop(Context* context) {
+    bool printFrameTime = false;
+    int frames = 0;
+    double times[FRAMES_PER_PRINT] = { 0 };
+    clock_t oa_tim_strt = 0, oa_tim_end = 0;
     while (!glfwWindowShouldClose(context->window)) {
+        oa_tim_strt = clock();
+
         glfwPollEvents();
         drawFrame(context);
+
+        oa_tim_end = clock();
+        double elapsedTime_s = ((double)(oa_tim_end - oa_tim_strt)) / CLOCKS_PER_SEC;
+        times[frames] = elapsedTime_s;
+        if (frames >= FRAMES_PER_PRINT - 1 && printFrameTime) {
+            double avg_elapsedTime_s = DoubleArraySum(times, FRAMES_PER_PRINT) / (double)FRAMES_PER_PRINT;
+            printf("time: ms %d\t fps: %.1lf\n", (int)(avg_elapsedTime_s * 1000), 1.0 / avg_elapsedTime_s);
+            frames = 0;
+        }
+        else if (printFrameTime) {
+            frames++;
+        }
     }
     vkDeviceWaitIdle(context->device);
 }
@@ -133,4 +155,12 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
     if (func != NULL) {
         func(instance, debugMessenger, pAllocator);
     }
+}
+
+double DoubleArraySum(double* array, int len) {
+    double sum = 0;
+    for (int i = 0; i < len; i++) {
+        sum += array[i];
+    }
+    return sum;
 }

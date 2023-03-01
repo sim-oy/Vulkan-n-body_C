@@ -16,6 +16,8 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 
 void cleanupSwapChain(Context* app);
 
+double DoubleArraySum(double* array, int len);
+
 #endif
 
 // copyBuffer uses separate command pool for performance

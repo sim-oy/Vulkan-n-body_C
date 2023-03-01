@@ -96,6 +96,8 @@ typedef struct Context {
 
     VkSemaphore* computeFinishedSemaphores;
     VkFence* computeInFlightFences;
+
+    const float timeStep;
 } Context;
 
 #endif
